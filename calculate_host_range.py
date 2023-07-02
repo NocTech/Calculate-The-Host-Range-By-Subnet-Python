@@ -1,34 +1,123 @@
-def calculate_host_range(ip_address, subnet_mask):
-    ip_parts = ip_address.split('.')
-    mask_parts = subnet_mask.split('.')
+import random
+import sys
 
-    # Convert IP address and subnet mask to binary
-    ip_binary = ''.join(format(int(part), '08b') for part in ip_parts)
-    mask_binary = ''.join(format(int(part), '08b') for part in mask_parts)
+def subnet_calc():
+    try:
+        print ("\n")
+        
+        while True:
+            # Prompt the user to enter an IP address
+            ip_address = input("Enter an IP address: ")
+         
+            a = ip_address.split('.')
+                        
+            # Validate the IP address
+            if (len(a) == 4) and (1 <= int(a[0]) <= 223) and (int(a[0]) != 127) and (int(a[0]) != 169 or int(a[1]) != 254) and (0 <= int(a[1]) <= 255 and 0 <= int(a[2]) <= 255 and 0 <= int(a[3]) <= 255):
+                break
+            
+            else:
+                print ("\nThe IP address is INVALID! Please retry!\n")
+                continue
+        
+        masks = [255, 254, 252, 248, 240, 224, 192, 128, 0]
+        
+        while True:
+            # Prompt the user to enter a subnet mask
+            subnet_mask = input("Enter a subnet mask: ")
+            
+         
+            b = subnet_mask.split('.')
+            
+            # Validate the subnet mask
+            if (len(b) == 4) and (int(b[0]) == 255) and (int(b[1]) in masks) and (int(b[2]) in masks) and (int(b[3]) in masks) and (int(b[0]) >= int(b[1]) >= int(b[2]) >= int(b[3])):
+                break
+            
+            else:
+                print ("\nThe subnet mask is INVALID! Please retry!\n")
+                continue
+         
 
-    # Calculate the network address by applying the bitwise AND operation
-    network_binary = ''.join(str(int(ip_binary[i]) & int(mask_binary[i])) for i in range(len(ip_binary)))
+        mask_octets_padded = []
+        mask_octets_decimal = subnet_mask.split(".")
+        
+        # Convert subnet mask to binary representation
+        for octet_index in range(0, len(mask_octets_decimal)):
+            binary_octet = bin(int(mask_octets_decimal[octet_index])).split("b")[1]
 
-    # Calculate the maximum number of hosts based on the subnet mask
-    host_bits = mask_binary.count('0')
-    max_hosts = 2 ** host_bits - 2  # Subtract 2 for the network and broadcast addresses
+            if len(binary_octet) == 8:
+                mask_octets_padded.append(binary_octet)
+            
+            elif len(binary_octet) < 8:
+                binary_octet_padded = binary_octet.zfill(8)
+                mask_octets_padded.append(binary_octet_padded)
+                
+        decimal_mask = "".join(mask_octets_padded)
 
-    # Calculate the first and last host addresses in the range
-    first_host_binary = network_binary[:-1] + '1'  # Increment the host portion by 1
-    last_host_binary = network_binary[:-1] + '1' * host_bits  # Set all host bits to 1
+        no_of_zeros = decimal_mask.count("0")
+        no_of_ones = 32 - no_of_zeros
+        no_of_hosts = abs(2 ** no_of_zeros - 2) 
+        
+        wildcard_octets = []
+        for w_octet in mask_octets_decimal:
+            wild_octet = 255 - int(w_octet)
+            wildcard_octets.append(str(wild_octet))
+            
+        wildcard_mask = ".".join(wildcard_octets)
 
-    # Convert the first and last host addresses back to decimal
-    first_host_parts = [str(int(first_host_binary[i:i+8], 2)) for i in range(0, len(first_host_binary), 8)]
-    last_host_parts = [str(int(last_host_binary[i:i+8], 2)) for i in range(0, len(last_host_binary), 8)]
+        ip_octets_padded = []
+        ip_octets_decimal = ip_address.split(".")
+        
+        # Convert IP address to binary representation
+        for octet_index in range(0, len(ip_octets_decimal)):
+            binary_octet = bin(int(ip_octets_decimal[octet_index])).split("b")[1]
+            
+            if len(binary_octet) < 8:
+                binary_octet_padded = binary_octet.zfill(8)
+                ip_octets_padded.append(binary_octet_padded)
+            
+            else:
+                ip_octets_padded.append(binary_octet)
+    
 
-    first_host = '.'.join(first_host_parts)
-    last_host = '.'.join(last_host_parts)
+        binary_ip = "".join(ip_octets_padded)
 
-    return (first_host, last_host)
+        network_address_binary = binary_ip[:(no_of_ones)] + "0" * no_of_zeros
 
-# Example usage
-ip_address = '192.168.1.100'
-subnet_mask = '255.255.255.0'
-first_host, last_host = calculate_host_range(ip_address, subnet_mask)
-print("First host:", first_host)
-print("Last host:", last_host)
+        broadcast_address_binary = binary_ip[:(no_of_ones)] + "1" * no_of_zeros
+
+        net_ip_octets = []
+        for octet in range(0, len(network_address_binary), 8):
+            net_ip_octet = network_address_binary[octet:octet+8]
+            net_ip_octets.append(net_ip_octet)
+
+        net_ip_address = []
+        for each_octet in net_ip_octets:
+            net_ip_address.append(str(int(each_octet, 2)))
+            
+        network_address = ".".join(net_ip_address)
+
+        bst_ip_octets = []
+        for octet in range(0, len(broadcast_address_binary), 8):
+            bst_ip_octet = broadcast_address_binary[octet:octet+8]
+            bst_ip_octets.append(bst_ip_octet)
+        
+        bst_ip_address = []
+        for each_octet in bst_ip_octets:
+            bst_ip_address.append(str(int(each_octet, 2)))
+            
+        broadcast_address = ".".join(bst_ip_address)
+
+        # Print the network properties
+        print ("\n")
+        print ("Network address is: %s" % network_address)
+        print ("Broadcast address is: %s" % broadcast_address)
+        print ("Number of valid hosts per subnet: %s" % no_of_hosts)
+        print ("Wildcard mask: %s" % wildcard_mask)
+        print ("Mask bits: %s" % no_of_ones)
+        print ("\n")
+        
+    except KeyboardInterrupt:
+        print ("\n\nProgram aborted by user. Exiting...\n")
+        sys.exit()
+
+subnet_calc()
